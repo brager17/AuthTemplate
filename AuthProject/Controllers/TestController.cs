@@ -8,7 +8,7 @@ namespace AuthProject.Controllers
     public class TestController : ControllerBase
     {
         [HttpPost]
-        public IActionResult Index([FromBody] WorkFlow.InputDto inputDto)
+        public IActionResult Index([FromBody] InputDto inputDto)
         {
             return Ok(inputDto);
         }
