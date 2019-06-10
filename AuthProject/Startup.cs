@@ -4,6 +4,7 @@ using AuthProject.AuthService;
 using AuthProject.Context;
 using AuthProject.EmailSender;
 using AuthProject.Identities;
+using AuthProject.ServiceCollectionExtensions;
 using AuthProject.Services;
 using Force;
 using MailKit.Net.Smtp;
@@ -52,6 +53,7 @@ namespace AuthProject
                 .AddDefaultTokenProviders();
 
             // @formatter:off 
+            services.AutoRegistration();
             services.AddScoped<JwtAuthorizeService>();
             services.AddScoped<SmtpClient>();
             services.AddScoped<IAsyncHandler<TokenEmailDto, SimplyHandlerResult>, UserSignupHandler>();

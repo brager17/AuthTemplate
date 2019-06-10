@@ -1,4 +1,6 @@
+using System.Net;
 using AuthProject.WorkflowTest;
+using Force;
 using Microsoft.AspNetCore.Mvc;
 
 namespace AuthProject.Controllers
@@ -7,10 +9,11 @@ namespace AuthProject.Controllers
     [ApiController]
     public class TestController : ControllerBase
     {
-        [HttpPost]
-        public IActionResult Index([FromBody] InputDto inputDto)
+        [HttpGet]
+        public IActionResult Index([FromServices] IHandler<InputDto, CreateUserDto> hander)
         {
-            return Ok(inputDto);
+            
+            return Ok();
         }
     }
 }
