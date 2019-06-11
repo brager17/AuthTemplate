@@ -4,6 +4,7 @@ using System.Linq;
 using System.Reflection;
 using Force;
 using Microsoft.Extensions.DependencyInjection;
+using AuthProject.WorkflowTest;
 
 namespace AuthProject.ServiceCollectionExtensions
 {
@@ -11,15 +12,23 @@ namespace AuthProject.ServiceCollectionExtensions
     {
         private static IEnumerable<Assembly> Assemblies = AppDomain.CurrentDomain.GetAssemblies().ToList();
 
-        private static Type[] BaseTypes = {typeof(IHandler<,>)};
+        private static readonly Type[] BaseTypes =
+        {
+            typeof(IHandler<,>),
+            typeof(IHandler<>),
+            typeof(IAsyncHandler<,>),
+            typeof(IAsyncHandler<>),
+            typeof(ICanRollBack<>)
+        };
 
         public static IServiceCollection AutoRegistration(this IServiceCollection serviceCollection)
         {
-            return serviceCollection.Scan(x => x.FromAssemblies(Assemblies)
-                .AddClasses(xx => xx.AssignableToAny(BaseTypes))
-                .AsSelf()
-                .AsImplementedInterfaces()
-                .WithScopedLifetime());
+            return serviceCollection
+                .Scan(x => x.FromAssemblies(Assemblies)
+                    .AddClasses(xx => xx.AssignableToAny(BaseTypes))
+                    .AsSelf()
+                    .AsImplementedInterfaces()
+                    .WithScopedLifetime());
         }
     }
 }

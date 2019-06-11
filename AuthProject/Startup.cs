@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using System.Text;
 using AuthProject.AuthService;
 using AuthProject.Context;
@@ -6,11 +7,13 @@ using AuthProject.EmailSender;
 using AuthProject.Identities;
 using AuthProject.ServiceCollectionExtensions;
 using AuthProject.Services;
+using AuthProject.WorkflowTest;
 using Force;
 using MailKit.Net.Smtp;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -56,12 +59,8 @@ namespace AuthProject
             services.AutoRegistration();
             services.AddScoped<JwtAuthorizeService>();
             services.AddScoped<SmtpClient>();
-            services.AddScoped<IAsyncHandler<TokenEmailDto, SimplyHandlerResult>, UserSignupHandler>();
-            services.AddScoped<IAsyncHandler<CustomIdentityUserWithRolesDto, ConfirmationCodeDto>, EmailConfirmationHandler>();
-            services.AddScoped<IAsyncHandler<EmailSendDto, SimplyHandlerResult>, EmailSenderService>();
             services.AddScoped<EmailSenderService>();
-            services.AddScoped<IAsyncHandler<TokenEmailPasswordDto, ResetPasswordDto>,SecondaryRecoveryForgotPassword>();
-            services.AddScoped<IAsyncHandler<ForgotPasswordDto, SimplyHandlerResult>,PrimaryRecoveryForgotPasswordHandler>();
+            services.AddScoped(typeof(WorkflowManager<,>));
             // @formatter:on
 
             services.Configure<EmailSenderConfiguration>(Configuration.GetSection("EmailSenderConfiguration"));
@@ -109,6 +108,7 @@ namespace AuthProject
             });
 
             services.AddMvc();
+//            services.AddMvc(options => { options.ModelBinderProviders.Insert(0, new WorkflowBinderProvider()); });
             services.AddControllers()
                 .AddNewtonsoftJson();
         }
@@ -130,6 +130,16 @@ namespace AuthProject
 
 
             app.UseRouting();
+
+            app.UseExceptionHandler(errorApp =>
+            {
+                errorApp.Run(async context =>
+                {
+                    var props = errorApp.Properties.ToList();
+                    context.Response.StatusCode = 320;
+                    await context.Response.WriteAsync("");
+                });
+            });
 
             app.UseAuthentication();
             app.UseAuthorization();

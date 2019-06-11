@@ -4,6 +4,10 @@ namespace AuthProject.EmailSender
 {
     public class EmailSendDto
     {
+        public EmailSendDto()
+        {
+            
+        }
         public EmailSendDto(Email sendeeEmail, string text, string subject)
         {
             SendeeEmail = sendeeEmail;
