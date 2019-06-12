@@ -81,7 +81,8 @@ namespace AuthProject
                 ValidateLifetime = true,
                 ClockSkew = TimeSpan.Zero
             };
-
+            
+            
             services.AddAuthentication(options =>
                 {
                     options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;

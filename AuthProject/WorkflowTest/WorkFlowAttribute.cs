@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Mvc.Controllers;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Microsoft.AspNetCore.Mvc.ModelBinding.Binders;
 using Microsoft.AspNetCore.Mvc.ModelBinding.Metadata;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace AuthProject.WorkflowTest
 {
@@ -72,6 +73,10 @@ namespace AuthProject.WorkflowTest
             var dtoType = dtoParameter.ParameterType;
 
             var s = typeof(WorkflowManager<,>).MakeGenericType(dtoType, ouputGenericType);
+
+            ActivatorUtilities.CreateInstance(
+                bindingContext.HttpContext.RequestServices, s,
+                bindingContext.HttpContext.RequestServices);
 
             var workflowManager = (IWorkflowManager) bindingContext.HttpContext.RequestServices.GetService(s);
 
