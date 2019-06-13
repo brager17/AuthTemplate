@@ -18,7 +18,7 @@ namespace AuthProject.ServiceCollectionExtensions
             typeof(IHandler<>),
             typeof(IAsyncHandler<,>),
             typeof(IAsyncHandler<>),
-            typeof(ICanRollBack<>)
+            typeof(ICanAsyncRollBack<>)
         };
 
         public static IServiceCollection AutoRegistration(this IServiceCollection serviceCollection)

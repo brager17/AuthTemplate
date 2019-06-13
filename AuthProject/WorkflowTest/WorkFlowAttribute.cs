@@ -72,16 +72,18 @@ namespace AuthProject.WorkflowTest
 
             var dtoType = dtoParameter.ParameterType;
 
-            var s = typeof(WorkflowManager<,>).MakeGenericType(dtoType, ouputGenericType);
+            var workflowManagerType = typeof(WorkflowManager<,>).MakeGenericType(dtoType, ouputGenericType);
 
-            ActivatorUtilities.CreateInstance(
-                bindingContext.HttpContext.RequestServices, s,
+
+            var workflowManager =
+                (IWorkflowManager) bindingContext.HttpContext.RequestServices.GetService(workflowManagerType);
+
+            workflowManager = (IWorkflowManager) ActivatorUtilities.CreateInstance(
+                bindingContext.HttpContext.RequestServices, workflowManagerType,
                 bindingContext.HttpContext.RequestServices);
 
-            var workflowManager = (IWorkflowManager) bindingContext.HttpContext.RequestServices.GetService(s);
-
             var workflowInfo = new WorkflowInfo {WorkflowName = workFlowType};
-            workflowManager.Handle(workflowInfo);
+            workflowManager.Initialize(workflowInfo);
             bindingContext.Model = workflowManager;
             bindingContext.Result = ModelBindingResult.Success(workflowManager);
         }

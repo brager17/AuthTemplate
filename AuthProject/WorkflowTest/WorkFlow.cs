@@ -1,3 +1,4 @@
+using System;
 using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
@@ -9,8 +10,13 @@ namespace AuthProject.WorkflowTest
         Task Handle(TIn input, CancellationToken cancellationToken);
     }
 
-    public interface ICanRollBack<in TIn>
+    public interface ICanAsyncRollBack<in TIn>
     {
         Task RollBack(TIn input, CancellationToken cancellationToken);
+    }
+
+    public interface ICanRollBack<in TIn>
+    {
+        void RollBack(TIn input);
     }
 }

@@ -2,6 +2,8 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using System.Reflection.Metadata;
+using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using Force;
@@ -16,39 +18,20 @@ namespace AuthProject.WorkflowTest
 
     public interface IWorkflowManager
     {
-        object Handle(WorkflowInfo input);
-    }
-
-    public class WorkflowHandlerType
-    {
-        public Type Type { get; set; }
-        public Type InputHandlerType { get; set; }
-        public Type OutputHandlerType { get; set; }
-
-        public object Entity { get; set; }
-        public bool CanRoolBack { get; set; }
+        void Initialize(WorkflowInfo input);
     }
 
     public class WorkflowManager<TIn, TOut> : IWorkflowManager, IAsyncHandler<TIn, TOut>
         where TOut : new()
     {
-        private Type[] InnerWorkflowHandlers = VoidHandlers.Concat(ResultHandlers).ToArray();
-
-
-        private static readonly Type[] VoidHandlers =
-        {
-            typeof(IAsyncHandler<>),
-            typeof(IHandler<>)
-        };
-
-        private static readonly Type[] ResultHandlers =
-        {
-            typeof(IHandler<,>),
-            typeof(IAsyncHandler<,>),
-        };
+        private VoidHandlersFactory _voidHandlersFactory = new VoidHandlersFactory();
+        private ResultHandlersFactory _resultHandlersFactory = new ResultHandlersFactory();
+        private ResultHandlersExecutor _resultHandlersExecutor = new ResultHandlersExecutor();
+        private VoidHandlersExecutor _voidHandlersExecutor = new VoidHandlersExecutor();
 
         private readonly IServiceProvider _serviceProvider;
         private readonly Type _workflowType;
+        private List<Type> ChainTypes { get; set; }
 
         public WorkflowManager(IServiceProvider serviceProvider)
         {
@@ -61,7 +44,7 @@ namespace AuthProject.WorkflowTest
         /// </summary>
         /// <param name="input">тип workflow объекта</param>
         /// <returns></returns>
-        object IWorkflowManager.Handle(WorkflowInfo input)
+        void IWorkflowManager.Initialize(WorkflowInfo input)
         {
             if (input.WorkflowName.GetConstructors().All(x => x.GetParameters().Length != 0))
             {
@@ -70,83 +53,84 @@ namespace AuthProject.WorkflowTest
 
             var workflowNestedTypes = input.WorkflowName.GetNestedTypes();
 
-            var handlers = workflowNestedTypes
-                .Select(x => new WorkflowHandlerType
+
+            var services = workflowNestedTypes.Select(_serviceProvider.GetService).ToList();
+
+
+            var parameterInfos = services.Select(x => new
+                    {
+                        method = x.GetType().GetMethod("Handle"),
+                        parameter = x.GetType().GetMethod("Handle").GetParameters().FirstOrDefault().ParameterType
+                    })
+                    .Where(x => x.parameter != default)
+                ;
+
+            var parameterInfosList = parameterInfos.ToList();
+
+            ChainTypes = parameterInfos.SkipLast(1)
+                .Aggregate(new[] {typeof(TIn)}.AsEnumerable(), (a, c) =>
                 {
-                    Type = x,
-                    InputHandlerType = GetInputHandlerType(x),
-                    OutputHandlerType = GetOutputHandlerType(x),
-                    Entity = _serviceProvider.GetService(x),
-                    CanRoolBack = x.GetInterfaces().Any(xx => xx.GetGenericTypeDefinition() == typeof(ICanRollBack<>))
-                })
-                .ToList();
+                    var handler = parameterInfosList.First(x => x.parameter == a.Last());
+                    return a.Concat(handler.method.ReturnParameter.ParameterType.GetGenericArguments());
+                }).ToList();
 
-            var firstHandler = handlers.Where(x => x.InputHandlerType == typeof(TIn));
-            if (firstHandler.Count() != 1)
+            foreach (var service in services)
             {
-                throw new Exception($"В воркфлоу не удается определить входной хэндлер, с инпутом {typeof(TIn).Name}");
-            }
-
-            var allTypes = handlers.Select(x => x.InputHandlerType).Where(x => x != typeof(TIn)).ToList();
-
-            var desiredType = typeof(TOut);
-
-            while (allTypes.Count > 0)
-            {
-                var newDesiredType = handlers.FirstOrDefault(x => x.InputHandlerType == desiredType)?.OutputHandlerType;
-                if (newDesiredType == null)
+                var voidHandler = _voidHandlersFactory.Create((dynamic) service);
+                if (voidHandler != null)
                 {
-                    throw new Exception($"Не найден хэндлер отвечающий за переход в {desiredType} ");
+                    _voidHandlersExecutor.AddHandler(voidHandler);
+                    continue;
                 }
 
-                allTypes.Remove(desiredType);
-                desiredType = newDesiredType;
+                var resultHandler = _resultHandlersFactory.Create((dynamic) service);
+                if (resultHandler != null)
+                {
+                    _resultHandlersExecutor.AddHandler(resultHandler);
+                }
             }
-
-            return 1;
         }
 
+        // массив типов
 
-        private Type GetInputHandlerType(Type handlerType)
+        public async Task<TOut> Handle(TIn input, CancellationToken ct)
         {
-            var interfaces = handlerType.GetInterfaces().ToList();
+            object chainInputOut = input;
+            var chainTypesCounter = 0;
 
-            var handlerInterface = interfaces
-                .FirstOrDefault(x => InnerWorkflowHandlers.Contains(x.GetGenericTypeDefinition()));
-
-            if (handlerInterface != null)
+            while (chainInputOut.GetType() != typeof(TOut))
             {
-                return handlerInterface.GetGenericArguments().First();
+                try
+                {
+                    var inputHandlerType = ChainTypes[chainTypesCounter];
+                    var outputHandlerType = ChainTypes[++chainTypesCounter];
+
+                    var voidHandler = typeof(VoidHandlersExecutor).GetMethod("TryHandle")
+                        .MakeGenericMethod(inputHandlerType)
+                        .Invoke(_voidHandlersExecutor, new object[] {chainInputOut, ct});
+
+                    await (Task) voidHandler;
+
+                    var resultTask = typeof(ResultHandlersExecutor).GetMethod("TryHandle")
+                        .MakeGenericMethod(inputHandlerType, outputHandlerType)
+                        .Invoke(_resultHandlersExecutor, new object[] {chainInputOut, ct});
+
+                    await (Task) resultTask;
+
+                    chainInputOut = resultTask.GetType().GetProperty("Result").GetValue(resultTask);
+                }
+                catch (WorkflowException workflowException)
+                {
+                    while (chainTypesCounter > 0)
+                    {
+                        var inputHandlerType = ChainTypes[--chainTypesCounter];
+                        var outputHandlerType = ChainTypes[chainTypesCounter];
+                        
+                    }
+                }
             }
 
-            throw new ArgumentException("Внутренний тип в воркфлоу должен быть хендлером");
-        }
-
-        private Type GetOutputHandlerType(Type handlerType)
-        {
-            var interfaces = handlerType.GetInterfaces();
-
-            var handlerInterface = interfaces
-                .FirstOrDefault(x => ResultHandlers.Contains(x.GetGenericTypeDefinition()));
-
-            if (handlerInterface != null)
-            {
-                return handlerInterface.GetGenericArguments().Last();
-            }
-
-            if (VoidHandlers.Contains(handlerType))
-            {
-                return null;
-            }
-
-            throw new ArgumentException("Внутренний тип в воркфлоу должен быть хендлером");
-        }
-
-
-        public async Task<TOut> Handle(TIn input, CancellationToken cancellationToken)
-        {
-            await Task.Delay(0);
-            return await Task.FromResult(new TOut());
+            return (TOut) chainInputOut;
         }
     }
 }

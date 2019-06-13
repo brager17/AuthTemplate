@@ -14,8 +14,16 @@ namespace AuthProject.WorkflowTest
 {
     public class TestWorkflow
     {
+        public class Test : IHandler<int>
+        {
+            public void Handle(int input)
+            {
+                throw new NotImplementedException();
+            }
+        }
+
         public class CreateUserNewHandler : IAsyncHandler<CreateNewUserInputDto, AddClaimsInputDto>,
-            ICanRollBack<CreateNewUserInputDto>
+            ICanAsyncRollBack<CreateNewUserInputDto>
         {
             private readonly UserManager<CustomIdentityUser> _userManager;
 
@@ -23,6 +31,7 @@ namespace AuthProject.WorkflowTest
             {
                 _userManager = userManager;
             }
+
 
             public async Task<AddClaimsInputDto> Handle(CreateNewUserInputDto createNewUserInput,
                 CancellationToken cancellationToken)
@@ -61,7 +70,7 @@ namespace AuthProject.WorkflowTest
         }
 
         public class AddClaimsHandler : IAsyncHandler<AddClaimsInputDto, AddRolesInputDto>,
-            ICanRollBack<AddClaimsInputDto>
+            ICanAsyncRollBack<AddClaimsInputDto>
         {
             private readonly UserManager<CustomIdentityUser> _userManager;
 
@@ -131,7 +140,8 @@ namespace AuthProject.WorkflowTest
         }
 
 
-        public class ConfirmHandler : IAsyncHandler<ConfirmDto>, ICanRollBack<CreateNewUserInputDto>
+        public class ConfirmHandler : IAsyncHandler<ConfirmDto, ConfirmInfoDto>,
+            ICanAsyncRollBack<CreateNewUserInputDto>
         {
             private readonly UserManager<CustomIdentityUser> _userManager;
             private readonly EmailSenderService _emailSenderService;
@@ -142,13 +152,14 @@ namespace AuthProject.WorkflowTest
                 _emailSenderService = emailSenderService;
             }
 
-            public async Task Handle(ConfirmDto input, CancellationToken cancellationToken)
+            public async Task<ConfirmInfoDto> Handle(ConfirmDto input, CancellationToken cancellationToken)
             {
                 var resetPasswordToken = await _userManager.GenerateEmailConfirmationTokenAsync(input.User);
                 var email = input.User.Email;
                 var userEmail = input.User.Email;
                 var emailSendDto = new EmailSendDto(email, GenerateMessageText(resetPasswordToken, email), userEmail);
                 await _emailSenderService.Handle(emailSendDto, cancellationToken);
+                return new ConfirmInfoDto(userEmail, "Письмо успешно отправлено");
             }
 
             public async Task RollBack(CreateNewUserInputDto createNewUserInput, CancellationToken cancellationToken)

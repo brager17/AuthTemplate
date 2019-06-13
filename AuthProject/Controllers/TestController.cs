@@ -21,13 +21,13 @@ namespace AuthProject.Controllers
     public class TestController : ControllerBase
     {
         [HttpPost]
-        public async Task<ActionResult<AddClaimsInputDto>> Index(
+        public async Task<ActionResult<ConfirmInfoDto>> Index(
             [WorkFlowAttribute(typeof(TestWorkflow))]
-            IAsyncHandler<CreateNewUserInputDto, AddClaimsInputDto> handler,
+            IAsyncHandler<CreateNewUserInputDto, ConfirmInfoDto> handler,
             CreateNewUserInputDto dto)
         {
             var s = (double) 12 / 0;
-            CancellationToken ct = CancellationToken.None;
+            var ct = CancellationToken.None;
             return await handler.Handle(dto, ct);
         }
     }
