@@ -14,14 +14,6 @@ namespace AuthProject.WorkflowTest
 {
     public class TestWorkflow
     {
-        public class Test : IHandler<int>
-        {
-            public void Handle(int input)
-            {
-                throw new NotImplementedException();
-            }
-        }
-
         public class CreateUserNewHandler : IAsyncHandler<CreateNewUserInputDto, AddClaimsInputDto>,
             ICanAsyncRollBack<CreateNewUserInputDto>
         {
@@ -52,12 +44,13 @@ namespace AuthProject.WorkflowTest
                 return new AddClaimsInputDto(user, createNewUserInput.Roles);
             }
 
-            public async Task RollBack(CreateNewUserInputDto input, CancellationToken cancellationToken)
+            public async Task<ErrorMessage> RollBack(CreateNewUserInputDto input,
+                CancellationToken cancellationToken)
             {
                 var user = await _userManager.FindByEmailAsync(input.Email);
                 if (user == null)
                 {
-                    throw new RollBackException("");
+                    return new ErrorMessage("Не удалось создать пользователя");
                 }
 
                 var identityResult = await _userManager.DeleteAsync(user);
@@ -66,6 +59,10 @@ namespace AuthProject.WorkflowTest
                 {
                     throw new RollBackException(identityResult.Errors.Select(x => x.Description));
                 }
+
+                return await Task.FromResult(new ErrorMessage("Ошибка в CreateUserNewHandler"));
+
+                throw new NotImplementedException();
             }
         }
 
@@ -98,13 +95,19 @@ namespace AuthProject.WorkflowTest
                 return new AddRolesInputDto(input.User, input.Roles);
             }
 
-            public Task RollBack(AddClaimsInputDto input, CancellationToken cancellationToken)
+
+            public async Task<ErrorMessage> RollBack(AddClaimsInputDto input,
+                CancellationToken cancellationToken)
             {
-                throw new NotImplementedException();
+                var claims = GetClaims(input);
+                var user = input.User;
+                await _userManager.RemoveClaimsAsync(user, claims);
+                return new ErrorMessage("Ошибка в AddClaimsHandler");
             }
         }
 
-        public class AddRolesForExistingUserHandler : IAsyncHandler<AddRolesInputDto, ConfirmDto>
+        public class AddRolesForExistingUserHandler : IAsyncHandler<AddRolesInputDto, ConfirmDto>,
+            ICanAsyncRollBack<AddRolesInputDto>
         {
             private readonly RoleManager<CustomIdentityRole> _roleManager;
             private readonly UserManager<CustomIdentityUser> _userManager;
@@ -137,11 +140,19 @@ namespace AuthProject.WorkflowTest
 
                 return new ConfirmDto(input.User);
             }
+
+            public async Task<ErrorMessage> RollBack(AddRolesInputDto input, CancellationToken cancellationToken)
+            {
+                var user = input.User;
+                var roles = input.Roles;
+                await _userManager.RemoveFromRolesAsync(user, roles);
+                return new ErrorMessage("Ошибка в AddRolesForExistingUserHandler");
+            }
         }
 
 
         public class ConfirmHandler : IAsyncHandler<ConfirmDto, ConfirmInfoDto>,
-            ICanAsyncRollBack<CreateNewUserInputDto>
+            ICanAsyncRollBack<ConfirmDto>
         {
             private readonly UserManager<CustomIdentityUser> _userManager;
             private readonly EmailSenderService _emailSenderService;
@@ -158,13 +169,14 @@ namespace AuthProject.WorkflowTest
                 var email = input.User.Email;
                 var userEmail = input.User.Email;
                 var emailSendDto = new EmailSendDto(email, GenerateMessageText(resetPasswordToken, email), userEmail);
-                await _emailSenderService.Handle(emailSendDto, cancellationToken);
+//                await _emailSenderService.Handle(emailSendDto, cancellationToken);
                 return new ConfirmInfoDto(userEmail, "Письмо успешно отправлено");
             }
 
-            public async Task RollBack(CreateNewUserInputDto createNewUserInput, CancellationToken cancellationToken)
+            public Task<ErrorMessage> RollBack(ConfirmDto createNewUserInput,
+                CancellationToken cancellationToken)
             {
-                await Task.Delay(1000, cancellationToken);
+                return Task.FromResult(new ErrorMessage("ошибка в ConfirmHandler"));
             }
 
             private string GenerateMessageText(string code, string email)

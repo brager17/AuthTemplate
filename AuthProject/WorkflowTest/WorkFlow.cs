@@ -12,11 +12,23 @@ namespace AuthProject.WorkflowTest
 
     public interface ICanAsyncRollBack<in TIn>
     {
-        Task RollBack(TIn input, CancellationToken cancellationToken);
+        Task<ErrorMessage> RollBack(TIn input, CancellationToken cancellationToken);
     }
 
     public interface ICanRollBack<in TIn>
     {
-        void RollBack(TIn input);
+        ErrorMessage RollBack(TIn input);
+    }
+
+    public class ErrorMessage
+    {
+        public ErrorMessage(string messageInfo)
+        {
+            MessageInfo = messageInfo;
+        }
+
+        public string MessageInfo;
+
+       
     }
 }

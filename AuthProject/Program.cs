@@ -1,8 +1,10 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using AuthProject.Context;
+using AuthProject.EmailSender;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -20,6 +22,8 @@ namespace AuthProject
 
             using var scope = host.Services.CreateScope();
             using var dbcontext = scope.ServiceProvider.GetRequiredService<AuthDbContext>();
+
+          
 
             await dbcontext.Database.MigrateAsync();
 

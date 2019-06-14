@@ -3,6 +3,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using AuthProject.WorkflowTest;
 using Force;
+using Force.Extensions;
 using Microsoft.AspNetCore.Mvc;
 
 namespace AuthProject.Controllers
@@ -23,7 +24,7 @@ namespace AuthProject.Controllers
         [HttpPost]
         public async Task<ActionResult<ConfirmInfoDto>> Index(
             [WorkFlowAttribute(typeof(TestWorkflow))]
-            IAsyncHandler<CreateNewUserInputDto, ConfirmInfoDto> handler,
+            IAsyncHandler<CreateNewUserInputDto, ActionResult<ConfirmInfoDto>> handler,
             CreateNewUserInputDto dto)
         {
             var s = (double) 12 / 0;

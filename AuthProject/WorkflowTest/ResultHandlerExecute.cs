@@ -45,7 +45,7 @@ namespace AuthProject.WorkflowTest
             handlers.Add(voidAsyncHandler);
         }
 
-        public async Task TryHandle<TIn>(TIn input, CancellationToken cancellationToken)
+        public async Task TryHandle<TIn>(TIn input, CancellationToken cancellationToken = default)
         {
             var asyncHandlers = GetHandler<TIn>();
             if (asyncHandlers == null)
@@ -86,19 +86,25 @@ namespace AuthProject.WorkflowTest
 
     public class VoidHandlersFactory
     {
-        public IAsyncHandler<TIn> CreateByAsyncRoll<TIn>(ICanAsyncRollBack<TIn> asyncRollBackHandler)
-            => new AsyncRollBackExecute<TIn>(asyncRollBackHandler);
-
-        public IAsyncHandler<TIn> Create<TIn>(ICanRollBack<TIn> asyncRollBackHandler)
-            => new RollBackExecute<TIn>(asyncRollBackHandler);
-
         public IAsyncHandler<TIn> Create<TIn>(IHandler<TIn> asyncRollBackHandler)
             => new VoidHandlerExecute<TIn>(asyncRollBackHandler);
 
         public IAsyncHandler<TIn> Create<TIn>(IAsyncHandler<TIn> asyncRollBackHandler)
             => new VoidAsyncHandlerExecute<TIn>(asyncRollBackHandler);
 
-        public IAsyncHandler<dynamic> Create(object obj) => null;
+        public IAsyncHandler<object> Create(object obj) => null;
+    }
+
+    public class RollBackHandlerFactory
+    {
+        public IAsyncHandler<TIn, ErrorMessage> Create<TIn>(
+            ICanAsyncRollBack<TIn> asyncRollBackHandler)
+            => new AsyncRollBackExecute<TIn>(asyncRollBackHandler);
+
+        public IAsyncHandler<TIn, ErrorMessage> Create<TIn>(ICanRollBack<TIn> asyncRollBackHandler)
+            => new RollBackExecute<TIn, ErrorMessage>(asyncRollBackHandler);
+
+        public IAsyncHandler<object> Create(object obj) => null;
     }
 
 
@@ -134,7 +140,7 @@ namespace AuthProject.WorkflowTest
         }
     }
 
-    public class RollBackExecute<TIn> : IAsyncHandler<TIn>
+    public class RollBackExecute<TIn, TOut> : IAsyncHandler<TIn, ErrorMessage>
     {
         private readonly ICanRollBack<TIn> _canRollBack;
 
@@ -143,14 +149,13 @@ namespace AuthProject.WorkflowTest
             _canRollBack = canRollBack;
         }
 
-        public Task Handle(TIn input, CancellationToken cancellationToken)
+        public async Task<ErrorMessage> Handle(TIn input, CancellationToken cancellationToken)
         {
-            _canRollBack.RollBack(input);
-            return Task.CompletedTask;
+            return await Task.FromResult(_canRollBack.RollBack(input));
         }
     }
 
-    public class AsyncRollBackExecute<TIn> : IAsyncHandler<TIn>
+    public class AsyncRollBackExecute<TIn> : IAsyncHandler<TIn, ErrorMessage>
     {
         private readonly ICanAsyncRollBack<TIn> _asyncRollBack;
 
@@ -159,9 +164,9 @@ namespace AuthProject.WorkflowTest
             _asyncRollBack = asyncRollBack;
         }
 
-        public async Task Handle(TIn input, CancellationToken cancellationToken)
+        public async Task<ErrorMessage> Handle(TIn input, CancellationToken cancellationToken)
         {
-            await _asyncRollBack.RollBack(input, cancellationToken);
+            return await _asyncRollBack.RollBack(input, cancellationToken);
         }
     }
 

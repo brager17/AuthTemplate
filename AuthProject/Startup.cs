@@ -1,6 +1,8 @@
 using System;
 using System.Linq;
 using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
 using AuthProject.AuthService;
 using AuthProject.Context;
 using AuthProject.EmailSender;
@@ -81,8 +83,8 @@ namespace AuthProject
                 ValidateLifetime = true,
                 ClockSkew = TimeSpan.Zero
             };
-            
-            
+
+
             services.AddAuthentication(options =>
                 {
                     options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -115,7 +117,7 @@ namespace AuthProject
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
-        public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
+        public void Configure(IApplicationBuilder app, IWebHostEnvironment env,EmailSenderService emailSender)
         {
             if (env.IsDevelopment())
             {
