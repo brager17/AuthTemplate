@@ -15,5 +15,8 @@ namespace AuthProject.WorkflowTest
         public IEnumerable<string> Roles { get; set; }
         [Required]
         public string UserName { get; set; }
+        
+        [Required]
+        public int Age { get; set; }
     }
 }

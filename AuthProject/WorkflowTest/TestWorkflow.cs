@@ -38,7 +38,8 @@ namespace AuthProject.WorkflowTest
                 var user = new CustomIdentityUser(
                     createNewUserInput.Password,
                     createNewUserInput.UserName,
-                    createNewUserInput.Password);
+                    createNewUserInput.Password,
+                    createNewUserInput.Age);
 
                 await _userManager.CreateAsync(user);
                 return new AddClaimsInputDto(user, createNewUserInput.Roles);

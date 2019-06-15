@@ -41,9 +41,9 @@ namespace AuthProject.AuthService
             CancellationToken ct)
         {
             var user = await _userManager.FindByEmailAsync(userAuthenticationInfo.UserEmail);
-            var checkPasword = await _userManager.CheckPasswordAsync(user, userAuthenticationInfo.Password);
-            if (!checkPasword)
-                throw new ArgumentException();
+//            var checkPasword = await _userManager.CheckPasswordAsync(user, userAuthenticationInfo.Password);
+//            if (!checkPasword)
+//                throw new ArgumentException();
 
             var jwtTokenHandler = new JwtSecurityTokenHandler();
             var claims = MakeClaimsCollection(userAuthenticationInfo);
@@ -53,14 +53,13 @@ namespace AuthProject.AuthService
                 claims: claims,
                 issuer: jwtTokenOptions.Issuer,
                 audience: jwtTokenOptions.Audience,
-                expires: DateTime.Now.Add(TimeSpan.FromSeconds(30)),
+                expires: DateTime.Now.Add(TimeSpan.FromSeconds(1000)),
                 signingCredentials: new SigningCredentials(
                     new SymmetricSecurityKey(Encoding.ASCII.GetBytes(jwtTokenOptions.SecretKey)),
                     SecurityAlgorithms.HmacSha256)
             ));
 
             var refreshToken = (RefreshToken) Guid.NewGuid().ToString();
-
 
             user.RefreshToken = refreshToken;
             await _authDbContext.SaveChangesAsync(ct);
@@ -73,7 +72,8 @@ namespace AuthProject.AuthService
             var claims = new List<Claim>
             {
                 new Claim(ClaimTypes.Email, user.UserEmail),
-                new Claim(ClaimTypes.NameIdentifier, user.UserName)
+                new Claim(ClaimTypes.NameIdentifier, user.UserName),
+                new Claim("Age", $"{user.Age}")
             };
             return claims;
         }

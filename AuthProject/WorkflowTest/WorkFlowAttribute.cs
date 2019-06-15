@@ -11,11 +11,11 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace AuthProject.WorkflowTest
 {
-    public class WorkFlowAttribute : ModelBinderAttribute
+    public class WorkFlow : ModelBinderAttribute
     {
         public Type WorkflowType { get; set; }
 
-        public WorkFlowAttribute(Type workflowType)
+        public WorkFlow(Type workflowType)
         {
             WorkflowType = workflowType;
             BinderType = typeof(WorkflowBinder);
@@ -61,7 +61,7 @@ namespace AuthProject.WorkflowTest
             var workFlowType = ((ControllerParameterDescriptor) actionParameters
                     .First(x => x.Name == bindingContext.FieldName))
                 .ParameterInfo
-                .GetCustomAttribute<WorkFlowAttribute>()
+                .GetCustomAttribute<WorkFlow>()
                 .WorkflowType;
 
             var dtoParameter = actionParameters.FirstOrDefault(x => x.Name != bindingContext.FieldName);
@@ -76,9 +76,9 @@ namespace AuthProject.WorkflowTest
 
 
             var workflowManager =
-                (IWorkflowManager) bindingContext.HttpContext.RequestServices.GetService(workflowManagerType);
+                (IInitializeWorkflowManager) bindingContext.HttpContext.RequestServices.GetService(workflowManagerType);
 
-            workflowManager = (IWorkflowManager) ActivatorUtilities.CreateInstance(
+            workflowManager = (IInitializeWorkflowManager) ActivatorUtilities.CreateInstance(
                 bindingContext.HttpContext.RequestServices, workflowManagerType,
                 bindingContext.HttpContext.RequestServices);
 
@@ -95,7 +95,7 @@ namespace AuthProject.WorkflowTest
         public IModelBinder GetBinder(ModelBinderProviderContext context)
         {
             if (context.Metadata is DefaultModelMetadata t &&
-                t.Attributes.Attributes.Any(x => x.GetType() == typeof(WorkFlowAttribute)))
+                t.Attributes.Attributes.Any(x => x.GetType() == typeof(WorkFlow)))
             {
                 return new BinderTypeModelBinder(typeof(WorkflowBinder));
             }

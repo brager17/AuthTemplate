@@ -11,27 +11,27 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace AuthProject.WorkflowTest
 {
-    public class WorkflowManager<TIn, TOut> : IWorkflowManager, IAsyncHandler<TIn, ActionResult<TOut>>
+    public class WorkflowManager<TIn, TOut>
+        : IInitializeWorkflowManager, IAsyncHandler<TIn, ActionResult<TOut>>
         where TOut : new()
     {
-        private static VoidHandlersFactory _voidHandlersFactory = new VoidHandlersFactory();
-        private static RollBackHandlerFactory _rollBackHandlerFactory = new RollBackHandlerFactory();
-        private static ResultHandlersFactory _resultHandlersFactory = new ResultHandlersFactory();
-        private static ResultHandlersExecutor _resultHandlersExecutor = new ResultHandlersExecutor();
-        private static VoidHandlersExecutor _voidHandlersExecutor = new VoidHandlersExecutor();
-        private static ResultHandlersExecutor _rollBackHandlersExecutor = new ResultHandlersExecutor();
+        private readonly VoidHandlersFactory _voidHandlersFactory = new VoidHandlersFactory();
+        private readonly RollBackHandlerFactory _rollBackHandlerFactory = new RollBackHandlerFactory();
+        private readonly ResultHandlersFactory _resultHandlersFactory = new ResultHandlersFactory();
+        private readonly ResultHandlersExecutor _resultHandlersExecutor = new ResultHandlersExecutor();
+        private readonly VoidHandlersExecutor _voidHandlersExecutor = new VoidHandlersExecutor();
+        private readonly ResultHandlersExecutor _rollBackHandlersExecutor = new ResultHandlersExecutor();
         private List<object> ChainHandlersInputs { get; } = new List<object>();
         private readonly IServiceProvider _serviceProvider;
-        private readonly Type _workflowType;
         private List<Type> ChainTypes { get; set; }
 
-        private static InputTypeParametersToObject InvokeVoidTryHandler =>
+        private InputTypeParametersToObject InvokeVoidTryHandleMethod =>
             typeof(VoidHandlersExecutor).Invoke(_voidHandlersExecutor, "TryHandle");
 
-        private static InputTypeParametersToObject InvokeResultTryHandler =>
+        private InputTypeParametersToObject InvokeResultTryHandleMethod =>
             typeof(ResultHandlersExecutor).Invoke(_resultHandlersExecutor, "TryHandle");
 
-        private static InputTypeParametersToObject InvokeRollBackTryHandler =>
+        private InputTypeParametersToObject InvokeRollBackTryHandleMethod =>
             typeof(ResultHandlersExecutor).Invoke(_rollBackHandlersExecutor, "TryHandle");
 
         private static GetPropertyValue ResultPropertyValue => ReflectionExtensions.GetPropertyValue("Result");
@@ -41,13 +41,7 @@ namespace AuthProject.WorkflowTest
             _serviceProvider = serviceProvider;
         }
 
-
-        /// <summary>
-        /// 
-        /// </summary>
-        /// <param name="input">тип workflow объекта</param>
-        /// <returns></returns>
-        void IWorkflowManager.Initialize(WorkflowInfo input)
+        void IInitializeWorkflowManager.Initialize(WorkflowInfo input)
         {
             if (WorkflowNotContainsWithoutParametersConstructor(input))
             {
@@ -99,12 +93,6 @@ namespace AuthProject.WorkflowTest
             }
         }
 
-        private static bool WorkflowNotContainsWithoutParametersConstructor(WorkflowInfo input)
-        {
-            return input.WorkflowName.GetConstructors().All(x => x.GetParameters().Length != 0);
-        }
-
-        // массив типов
 
         public async Task<ActionResult<TOut>> Handle(TIn input, CancellationToken ct)
         {
@@ -120,12 +108,13 @@ namespace AuthProject.WorkflowTest
                     var inputHandlerParameterType = ChainTypes[chainTypesCounter];
                     var outputHandlerReturnType = ChainTypes[++chainTypesCounter];
 
-                    var voidHandler = InvokeVoidTryHandler(inputHandlerParameterType)(chainInputOut, ct);
+                    var voidHandler = InvokeVoidTryHandleMethod(inputHandlerParameterType)(chainInputOut, ct);
 
                     await (Task) voidHandler;
 
                     var resultTask =
-                        InvokeResultTryHandler(inputHandlerParameterType, outputHandlerReturnType)(chainInputOut, ct);
+                        InvokeResultTryHandleMethod(inputHandlerParameterType, outputHandlerReturnType)(chainInputOut,
+                            ct);
 
                     await (Task) resultTask;
 
@@ -138,9 +127,8 @@ namespace AuthProject.WorkflowTest
                     {
                         var inputHandlerType = ChainTypes[--chainTypesCounter];
 
-                        var rollBackHandler =
-                            InvokeRollBackTryHandler(inputHandlerType, typeof(ErrorMessage))(
-                                ChainHandlersInputs[chainTypesCounter], ct);
+                        var rollBackHandler = InvokeRollBackTryHandleMethod(inputHandlerType, typeof(ErrorMessage))
+                            (ChainHandlersInputs[chainTypesCounter], ct);
 
                         await (Task) rollBackHandler;
 
@@ -158,6 +146,11 @@ namespace AuthProject.WorkflowTest
             }
 
             return (TOut) chainInputOut;
+        }
+
+        private static bool WorkflowNotContainsWithoutParametersConstructor(WorkflowInfo input)
+        {
+            return input.WorkflowName.GetConstructors().All(x => x.GetParameters().Length != 0);
         }
     }
 }

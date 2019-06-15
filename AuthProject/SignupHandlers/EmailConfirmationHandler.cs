@@ -36,7 +36,7 @@ namespace AuthProject.Services
             var user = new CustomIdentityUser();
             try
             {
-                user = new CustomIdentityUser(input.UserEmail, input.UserName, input.Password);
+                user = new CustomIdentityUser(input.UserEmail, input.UserName, input.Password, input.Age);
                 var createUserResult = await _userManager.CreateAsync(user);
                 if (!createUserResult.Succeeded)
                 {
@@ -52,20 +52,21 @@ namespace AuthProject.Services
                     }
                 }
 
-                var token = await _userManager.GenerateEmailConfirmationTokenAsync(user);
+//                var token = await _userManager.GenerateEmailConfirmationTokenAsync(user);
+//
+//                var email = (Email) input.UserEmail;
+//                var text = GenerateMessageText(token, email);
+//                var subject = input.UserName;
+//                var emailSendDto = new EmailSendDto(email, text, subject);
 
-                var email = (Email) input.UserEmail;
-                var text = GenerateMessageText(token, email);
-                var subject = input.UserName;
-                var emailSendDto = new EmailSendDto(email, text, subject);
+//                var sendEmailResult = await _emailSender.Handle(emailSendDto, cancellationToken);
+//
+//                if (!sendEmailResult.Succeeded)
+//                {
+//                }
 
-                var sendEmailResult = await _emailSender.Handle(emailSendDto, cancellationToken);
-
-                if (!sendEmailResult.Succeeded)
-                {
-                }
-
-                return new ConfirmationCodeDto(text);
+                return new ConfirmationCodeDto("sca");
+//                return new ConfirmationCodeDto(text);
             }
             catch (Exception e)
             {

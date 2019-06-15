@@ -18,7 +18,7 @@ namespace AuthProject.Controllers
 {
     [Route("api/[controller]/[action]")]
     [ApiController]
-    [Authorize]
+    [Authorize("age-policy")]
     public class AuthController : ControllerBase
     {
         [AllowAnonymous]
@@ -70,10 +70,9 @@ namespace AuthProject.Controllers
             return result;
         }
 
-        [HttpPost]
         // POST api/values
         [HttpGet]
-        public IActionResult LoginTest()
+        public IActionResult LoginTest([FromQuery] int id)
         {
             return Ok();
         }

@@ -1,18 +1,15 @@
 using System;
 using System.Linq;
 using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
 using AuthProject.AuthService;
 using AuthProject.Context;
 using AuthProject.EmailSender;
 using AuthProject.Identities;
 using AuthProject.ServiceCollectionExtensions;
-using AuthProject.Services;
 using AuthProject.WorkflowTest;
-using Force;
 using MailKit.Net.Smtp;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
@@ -63,6 +60,8 @@ namespace AuthProject
             services.AddScoped<SmtpClient>();
             services.AddScoped<EmailSenderService>();
             services.AddScoped(typeof(WorkflowManager<,>));
+            services.AddScoped<IAuthorizationHandler,MinAgeHandler>();
+            services.AddHttpContextAccessor();
             // @formatter:on
 
             services.Configure<EmailSenderConfiguration>(Configuration.GetSection("EmailSenderConfiguration"));
@@ -97,6 +96,15 @@ namespace AuthProject
                     options.SaveToken = true;
                 });
 
+
+            services.AddAuthorization(x =>
+            {
+                x.AddPolicy("age-policy", x =>
+                {
+                    x.Requirements.Add(new AgeRequirement(42));
+                });
+            });
+
 //            services.AddMvc(config =>
 //            {
 //                var policy = new AuthorizationPolicyBuilder().RequireAuthenticatedUser().Build();
@@ -117,7 +125,7 @@ namespace AuthProject
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
-        public void Configure(IApplicationBuilder app, IWebHostEnvironment env,EmailSenderService emailSender)
+        public void Configure(IApplicationBuilder app, IWebHostEnvironment env, EmailSenderService emailSender)
         {
             if (env.IsDevelopment())
             {

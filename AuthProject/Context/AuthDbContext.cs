@@ -38,6 +38,7 @@ namespace AuthProject.Context
 
         protected override void OnModelCreating(ModelBuilder builder)
         {
+            builder.Entity<CustomIdentityUser>().Property(x => x.Age).IsRequired();
             builder.ApplyConfiguration(new DisableAccessTokensEntityConfiguration());
             builder.ApplyConfiguration(new CustomIdentityUserEntityConfiguration());
             base.OnModelCreating(builder);

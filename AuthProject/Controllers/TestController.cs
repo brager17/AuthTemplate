@@ -23,7 +23,7 @@ namespace AuthProject.Controllers
     {
         [HttpPost]
         public async Task<ActionResult<ConfirmInfoDto>> Index(
-            [WorkFlowAttribute(typeof(TestWorkflow))]
+            [WorkFlow(typeof(TestWorkflow))]
             IAsyncHandler<CreateNewUserInputDto, ActionResult<ConfirmInfoDto>> handler,
             CreateNewUserInputDto dto)
         {

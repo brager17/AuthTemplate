@@ -1,6 +1,6 @@
 namespace AuthProject.WorkflowTest
 {
-    public interface IWorkflowManager
+    public interface IInitializeWorkflowManager
     {
         void Initialize(WorkflowInfo input);
     }
